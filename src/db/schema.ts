@@ -1,5 +1,61 @@
 import { pgTable, serial, text, decimal, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 
+// --- 1. THE BIG CATEGORIES (e.g., Food, Local Market, Pharmacy) ---
+export const categories = pgTable('categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(), 
+  slug: text('slug').notNull().unique(), 
+});
+
+// --- 2. SUB-CATEGORIES (e.g., Raw Peppers, Fast Food, Grains, Skincare) ---
+export const subCategories = pgTable('sub_categories', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').references(() => categories.id).notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+});
+
+// --- 3. VENDORS (From Supermarkets to Community Pepper Sellers) ---
+export const vendors = pgTable('vendors', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  brandName: text('brand_name').notNull(),
+  categoryId: integer('category_id').references(() => categories.id), // Their main grid card
+  storeBannerUrl: text('store_banner_url'), // Let them upload a header image
+  kycStatus: text('kyc_status').default('Pending'),
+  walletBalance: decimal('wallet_balance', { precision: 10, scale: 2 }).default('0.00'),
+  isPromoted: boolean('is_promoted').default(false), // Admin can toggle this to give them a "Promotion Badge"
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// --- 4. VENDOR PRODUCTS (Vendors control this completely) ---
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  vendorId: integer('vendor_id').references(() => vendors.id).notNull(),
+  subCategoryId: integer('sub_category_id').references(() => subCategories.id), // e.g., categorized as "Raw Peppers"
+  name: text('name').notNull(),
+  description: text('description'),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  discountPrice: decimal('discount_price', { precision: 10, scale: 2 }), // Vendors can set their own sales!
+  imageUrl: text('image_url'),
+  isAvailable: boolean('is_available').default(true), // Vendor can toggle this if out of stock
+  promoBadge: text('promo_badge'), // e.g., "Hot Deal", "Bestseller" (The product promotion bandage)
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// --- 5. ADMIN SPECIAL MEALS (Strictly for the ticking clock banner, managed by YOU) ---
+export const specialMeals = pgTable('special_meals', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(), // e.g., "Wednesday Jollof Fiesta"
+  description: text('description'),
+  imageUrl: text('image_url'),
+  promoBadge: text('promo_badge').default('Special Plan'), // The promotion bandage for the Special Meal
+  isAvailableToday: boolean('is_available_today').default(false), // Admin toggles what is served today
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// --- EXISTING TABLES (Users, Riders, Subs, Orders) ---
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   email: text('email').notNull().unique(),
@@ -7,16 +63,6 @@ export const users = pgTable('users', {
   fullName: text('full_name'),
   walletBalance: decimal('wallet_balance', { precision: 10, scale: 2 }).default('0.00'),
   isStudent: boolean('is_student').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const vendors = pgTable('vendors', {
-  id: serial('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  brandName: text('brand_name').notNull(),
-  kycStatus: text('kyc_status').default('Pending'),
-  walletBalance: decimal('wallet_balance', { precision: 10, scale: 2 }).default('0.00'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -42,8 +88,9 @@ export const subscriptionPlans = pgTable('subscription_plans', {
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   consumerId: integer('consumer_id').references(() => users.id).notNull(),
-  vendorId: integer('vendor_id').references(() => vendors.id).notNull(),
+  vendorId: integer('vendor_id').references(() => vendors.id), // Nullable for Special Meals
   riderId: integer('rider_id').references(() => riders.id),
+  isSpecialMeal: boolean('is_special_meal').default(false), // Tells the system if this is a sub order or a normal order
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   adminFee: decimal('admin_fee', { precision: 10, scale: 2 }).default('150.00'),
   status: text('status').default('Placed'),
