@@ -24,6 +24,10 @@ export default function Sidebar() {
         <Link href="/categories" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800 transition-colors">
           <span>📂</span> Categories
         </Link>
+                <Link href="/sub-categories" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800 transition-colors">
+          <span>↳</span> Sub-Categories
+        </Link>
+
         <Link href="/vendors" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800 transition-colors">
           <span>🏪</span> Vendors (Temu-Style)
         </Link>
