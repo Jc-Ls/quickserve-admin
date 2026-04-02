@@ -1,4 +1,5 @@
-import { pgTable, serial, text, decimal, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, doublePrecision, boolean, timestamp, serial, varchar, numeric, decimal, json, jsonb } from "drizzle-orm/pg-core";
+
 
 // --- 1. THE BIG CATEGORIES (e.g., Food, Local Market, Pharmacy) ---
 export const categories = pgTable('categories', {
@@ -97,4 +98,45 @@ export const orders = pgTable('orders', {
   consumerQrToken: text('consumer_qr_token'),
   riderQrToken: text('rider_qr_token'),
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ==========================================
+// QUICKSERVE SPECIAL MEAL ENGINE (DRIZZLE)
+// ==========================================
+
+export const subscriptions = pgTable("subscriptions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull(), // Links to Consumer
+  planType: text("plan_type").notNull(), // "corporate" or "student"
+  tier: text("tier").notNull(), // "basic", "standard", "premium"
+  cycle: text("cycle").notNull(), // "weekly" or "monthly"
+  totalDays: integer("total_days").notNull(), // 7 or 30
+  amountPaid: doublePrecision("amount_paid").notNull(), // e.g., 15000
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const mealSchedules = pgTable("meal_schedules", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  subscriptionId: text("subscription_id").notNull().references(() => subscriptions.id, { onDelete: "cascade" }),
+  deliveryDate: text("delivery_date").notNull(), // e.g., "2026-04-05"
+  timeSlot: text("time_slot").notNull(), // "morning", "afternoon", "evening"
+  meal: text("meal").notNull(), // e.g., "Amala"
+  protein: text("protein").notNull(), // e.g., "Fish"
+  status: text("status").default("PENDING").notNull(), // PENDING, COOKING, DISPATCHED, DELIVERED
+  riderId: text("rider_id"), // Blank until assigned!
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ==========================================
+// WALLET & CASHBACK ENGINE (DRIZZLE)
+// ==========================================
+
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull(),
+  amount: doublePrecision("amount").notNull(), // e.g., 2000
+  type: text("type").notNull(), // "CREDIT" or "DEBIT"
+  description: text("description").notNull(), // e.g., "Cashback"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
